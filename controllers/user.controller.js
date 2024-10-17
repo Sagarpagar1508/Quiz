@@ -22,7 +22,7 @@ exports.getTest = async (req, res) => {
     }
 };
 
-// Submit test answers
+
 // Submit test answers
 exports.submitTest = async (req, res) => {
     try {
@@ -72,7 +72,7 @@ exports.submitTest = async (req, res) => {
 const JWT_SECRET = process.env.JWT_SECRET || 'bhojsoft';
 // Register a new user
 exports.registerUser = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password,phone } = req.body;
 
     try {
         // Check if the email is already in use
@@ -82,7 +82,7 @@ exports.registerUser = async (req, res) => {
         }
 
         // Create a new user
-        user = new User({ name, email, password });
+        user = new User({ name, email, password, phone });
         await user.save();
 
         // Generate JWT token
@@ -133,6 +133,7 @@ exports.getProfile = async (req, res) => {
             id: user._id,
             name: user.name,
             email: user.email,
+            phone:user.phone,
            
         });
     } catch (error) {
@@ -144,7 +145,7 @@ exports.getProfile = async (req, res) => {
 // Update user information
 exports.updateUser = async (req, res) => {
     try {
-        const { name, role } = req.body;
+        const { name, phone,email } = req.body;
         const updatedUser = await User.findByIdAndUpdate(req.params.userId,  { new: true });
 
         if (!updatedUser) {
