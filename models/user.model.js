@@ -7,14 +7,22 @@ const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     phone: { type: String },
+    address: { type: String },
+    pin_code: { type: String },
+    city: { type: String },
+    state: { type: String },
+    country: { String },
+    college_name: { type: String },
+    experience: { type: String },
+    profile_image: String,
     testsTaken: [{
         testId: { type: mongoose.Schema.Types.ObjectId, ref: 'Test' },
-        score: Number
+        score: Number,
     }]
 });
 
 // Pre-save middleware to hash passwords
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     try {
         if (!this.isModified('password')) return next();
         const salt = await bcrypt.genSalt(10);
@@ -26,7 +34,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare passwords during login
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
 

@@ -33,13 +33,13 @@ const authenticate = (req, res, next) => {
     }
 };
 
-// Middleware to authorize superTeacher role
-const authorizeSuperTeacher = (req, res, next) => {
-    // Check if the user has the superTeacher role
-    if (req.user.role !== 'superTeacher') {
-        return res.status(403).json({ message: 'Access denied: You do not have superTeacher privileges' });
+// Middleware to authorize superAdmin role
+const authorizeSuperAdmin = (req, res, next) => {
+    // Check if the user has the superAdmin role
+    if (req.user.role !== 'superAdmin') {
+        return res.status(403).json({ message: 'Access denied: You do not have superAdmin privileges' });
     }
     next();
 };
 
-module.exports = { authenticate, authorizeSuperTeacher };
+module.exports = { authenticate, authorizeSuperAdmin };

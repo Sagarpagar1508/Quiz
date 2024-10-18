@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const teacherSchema = new mongoose.Schema({
+const adminSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }, // Add password field
@@ -9,7 +9,7 @@ const teacherSchema = new mongoose.Schema({
 });
 
 // Middleware to hash password before saving
-teacherSchema.pre('save', async function (next) {
+adminSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
   }
@@ -18,5 +18,5 @@ teacherSchema.pre('save', async function (next) {
   next();
 });
 
-const Teacher = mongoose.model('Teacher', teacherSchema);
-module.exports = Teacher;
+const Admin = mongoose.model('Admin', adminSchema);
+module.exports = Admin;

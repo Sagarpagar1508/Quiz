@@ -1,14 +1,14 @@
 const Test = require('../models/Test');
-const Teacher = require('../models/teacher');
+const Admin = require('../models/admin');
 
 // Create a test
 exports.createTest = async (req, res) => {
   try {
     const { title, subject, questions, startTime, duration, createdBy, class: testClass } = req.body;
     const test = new Test({ title, subject, questions, startTime, duration, createdBy, class: testClass });
-    
+    const test_image = req.file ? req.file.path : undefined;
     await test.save();
-    await Teacher.findByIdAndUpdate(createdBy, { $push: { testsCreated: test._id } });
+    await Admin.findByIdAndUpdate(createdBy, { $push: { testsCreated: test._id } });
     
     res.status(201).json(test);
   } catch (error) {
@@ -45,7 +45,7 @@ exports.deleteTest = async (req, res) => {
       return res.status(404).json({ error: 'Test not found' });
     }
 
-    await Teacher.findByIdAndUpdate(test.createdBy, { $pull: { testsCreated: testId } });
+    await Admin.findByIdAndUpdate(test.createdBy, { $pull: { testsCreated: testId } });
 
     res.status(200).json({ message: 'Test deleted successfully' });
   } catch (error) {
@@ -53,10 +53,10 @@ exports.deleteTest = async (req, res) => {
   }
 };
 
-// Get all tests created by the teacher
-exports.getTestsByTeacher = async (req, res) => {
+// Get all tests created by the Admin
+exports.getTestsByAdmin = async (req, res) => {
   try {
-    const tests = await Test.find({ createdBy: req.body.teacherId });
+    const tests = await Test.find({ createdBy: req.body.AdminId });
     res.status(200).json(tests);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -70,7 +70,7 @@ exports.getTestById = async (req, res) => {
     const { testId } = req.params;
     
     // Find the test by its ID
-    const test = await Test.findById(testId).populate('createdBy', 'name email'); // Populate teacher info
+    const test = await Test.findById(testId).populate('createdBy', 'name email'); // Populate Admin info
     
     if (!test) {
       return res.status(404).json({ message: 'Test not found' });
@@ -82,27 +82,27 @@ exports.getTestById = async (req, res) => {
   }
 };
 
-// Teacher registration
-exports.registerTeacher = async (req, res) => {
+// Admin registration
+exports.registerAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if teacher already exists
-    const existingTeacher = await Teacher.findOne({ email });
-    if (existingTeacher) {
-      return res.status(400).json({ error: 'Teacher with this email already exists' });
+    // Check if Admin already exists
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
+      return res.status(400).json({ error: 'Admin with this email already exists' });
     }
 
-    // Create a new teacher
-    const newTeacher = new Teacher({
+    // Create a new Admin
+    const newAdmin = new Admin({
       name,
       email,
       password, // Password will be hashed automatically thanks to the pre-save middleware
     });
 
-    await newTeacher.save();
+    await newAdmin.save();
 
-    res.status(201).json({ message: 'Teacher registered successfully', teacher: newTeacher });
+    res.status(201).json({ message: 'Admin registered successfully', Admin: newAdmin });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
