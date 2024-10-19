@@ -4,8 +4,8 @@ const Admin = require('../models/admin');
 // Create a test
 exports.createTest = async (req, res) => {
   try {
-    const { title, subject, questions, startTime, duration, createdBy, class: testClass } = req.body;
-    const test = new Test({ title, subject, questions, startTime, duration, createdBy, class: testClass });
+    const { title, subject, questions, startTime, duration, createdBy, class: testClass,description, topic } = req.body;
+    const test = new Test({ title, subject, questions, startTime, duration, createdBy, class: testClass,description,topic });
     const test_image = req.file ? req.file.path : undefined;
     await test.save();
     await Admin.findByIdAndUpdate(createdBy, { $push: { testsCreated: test._id } });

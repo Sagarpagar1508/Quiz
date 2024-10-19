@@ -32,7 +32,19 @@ const isStudent = async (req, res, next) => {
 
 
 // Student routes
+// get  tests by subject
+router.get('/tests/count',userController.getTestCountBySubject);
+
+// to get topics and quizzes by subject name
+router.get('/tests/subject/:subject', userController.getTopicsAndQuizzesBySubject);
+
+
+// Get a specific test details
 router.get('/test/:id', userController.getTest);
+
+// Get a specific test Quiz
+router.get('/test/question/:id', userController.getTestQuiz);
+
 router.post('/test/:id/submit', userController.submitTest);
 
 module.exports = router;

@@ -3,14 +3,100 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 const Test = require('../models/Test');
 const userModel = require('../models/user.model');
+const { default: mongoose } = require('mongoose');
 
 
 
-// Get a specific test
+
+// Controller to get  tests by subject and retrieve test_image
+exports.getTestCountBySubject = async (req, res) => {
+    try {
+        // MongoDB aggregation to group by subject, count tests, and get test_image
+        const testCounts = await Test.aggregate([
+            {
+                $group: {
+                    _id: "$subject", // Group by subject
+                    test_image: { $first: "$test_image" } // Get the first test_image for each subject group
+                }
+            },
+            {
+                $project: {
+                    _id: 0, // Exclude the default _id field
+                    subject: "$_id", // Include the subject field
+                    test_image: 1 // Include the test_image field
+                }
+            }
+        ]);
+
+        // If no tests found
+        if (testCounts.length === 0) {
+            return res.status(404).json({ message: 'No tests found' });
+        }
+
+        // Return the grouped test count data with subject and test_image
+        res.status(200).json({
+            message: 'Test count by subject retrieved successfully',
+            data: testCounts,
+        });
+    } catch (error) {
+        console.error('Error retrieving test count:', error);
+        res.status(500).json({ message: 'Error retrieving test count', error });
+    }
+};
+
+// Controller to get topics and quizzes by subject name
+exports.getTopicsAndQuizzesBySubject = async (req, res) => {
+    try {
+        const { subject } = req.params;  // Get the subject from the URL params
+
+        // MongoDB aggregation pipeline to match subject, group by topic, and retrieve quizzes
+        const topicsWithQuizzes = await Test.aggregate([
+            {
+                $match: { subject: subject } // Match the subject
+            },
+            {
+                $group: {
+                    _id: "$topic", // Group by topic
+                    quizzes: {
+                        $push: {
+                            title: "$title",         // Quiz title
+                            test_image: "$test_image" // Quiz image
+                        }
+                    },
+                    quizCount: { $sum: 1 } // Count quizzes per topic
+                }
+            },
+            {
+                $project: {
+                    _id: 0, // Exclude the default _id field
+                    topic: "$_id", // Topic name
+                    quizzes: 1, // Include the list of quizzes
+                    quizCount: 1 // Include the count of quizzes
+                }
+            }
+        ]);
+
+        // If no topics or quizzes found for the subject
+        if (topicsWithQuizzes.length === 0) {
+            return res.status(404).json({ message: 'No topics or quizzes found for the specified subject' });
+        }
+
+        // Return the topics and their quizzes
+        res.status(200).json({
+            message: 'Topics and quizzes retrieved successfully',
+            data: topicsWithQuizzes,
+        });
+    } catch (error) {
+        console.error('Error retrieving topics and quizzes:', error);
+        res.status(500).json({ message: 'Error retrieving topics and quizzes', error });
+    }
+};
+
+// Get a specific test details
 exports.getTest = async (req, res) => {
     try {
         const testId = req.params.id;
-        const test = await Test.findById(testId).select('-createdBy'); // Exclude the 'createdBy' field from the result
+        const test = await Test.findById(testId);
 
         if (!test) {
             return res.status(404).json({ error: 'Test not found' });
@@ -21,12 +107,8 @@ exports.getTest = async (req, res) => {
             title: test.title,
             subject: test.subject,
             class: test.class,
-            questions: test.questions.map(q => ({
-                question: q.question,
-                options: q.options
-            })),
-            startTime: test.startTime,
-            duration: test.duration
+            description: test.description,
+            createdBy: test.createdBy
         };
 
         res.status(200).json(sanitizedTest);
@@ -34,6 +116,34 @@ exports.getTest = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch test data' });
     }
 };
+
+
+// Get a specific test Quiz
+exports.getTestQuiz = async (req, res) => {
+    try {
+        const testId = req.params.id;
+        const test = await Test.findById(testId);
+
+        if (!test) {
+            return res.status(404).json({ error: 'Test not found' });
+        }
+
+        // Send the test without answers to prevent cheating
+        const sanitizedTest = {
+            questions: test.questions
+        };
+
+        res.status(200).json(sanitizedTest);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch test data' });
+    }
+};
+
+
+
+
+
+
 
 // Submit test answers
 exports.submitTest = async (req, res) => {
@@ -180,26 +290,35 @@ exports.updateUser = async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        // Extract userId from URL params
-        const updateData = req.body;   // Extract updated user data from request body
-        const profile_image = req.file ? req.file.path : undefined;
-        // Check if password is being updated
+        // Find the user by ID to fetch current data
+        const existingUser = await User.findById(userId);
+        if (!existingUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Extract updated data from request body and profile image from the request
+        const updateData = req.body;
+        const profile_image = req.file ? req.file.path : existingUser.profile_image; // Retain current image if not updated
+
+        // Check if password is being updated and hash it if provided
         if (updateData.password) {
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(updateData.password, salt); // Hash the new password
         }
 
-        const data = { ...updateData, profile_image }
+        // Merge existing data with updated data; keep existing fields if not provided
+        const data = {
+            ...existingUser.toObject(), // Spread current user data
+            ...updateData,              // Overwrite with new data
+            profile_image               // Ensure the profile image is updated correctly
+        };
+
         // Find the user by ID and update the document
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { $set: data }, // Update only the fields that are provided
+            { $set: data }, // Update the merged data
             { new: true, runValidators: true } // Return the updated document and run validation
         );
-
-        if (!updatedUser) {
-            return res.status(404).json({ message: 'User not found' });
-        }
 
         res.status(200).json({
             message: 'User updated successfully',
@@ -217,24 +336,33 @@ exports.getUserWithTests = async (req, res) => {
     try {
         const { userId } = req.params;  // Extract userId from URL params
 
+        // Check if userId is a valid MongoDB ObjectId
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: 'Invalid user ID' });
+        }
+
         // Find the user by ID and populate only _id, title, and test_image from the 'Test' schema
         const user = await User.findById(userId)
-        .select("_id")
+            .select("_id")
             .populate({
                 path: 'testsTaken.testId',
-                select: '_id title test_image',  // Select only id, title (for name), and test_image
+                select: '_id subject test_image',  // Select only id, title (for name), and test_image
+                // model: Test,  // Make sure to reference the Test model explicitly
             });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        // Log the result to see what's being returned
+        console.log('User with tests:', user);
+
         res.status(200).json({
             message: 'User retrieved successfully',
             user,
         });
     } catch (error) {
-        console.error(error);
+        console.error('Error retrieving user and tests:', error);
         res.status(500).json({ message: 'Error retrieving user', error });
     }
 };
