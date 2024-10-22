@@ -97,7 +97,7 @@ exports.getTopicsAndQuizzesBySubject = async (req, res) => {
 exports.getTest = async (req, res) => {
     try {
         const testId = req.params.id;
-        const test = await Test.findById(testId);
+        const test = await Test.findById(testId ).populate("createdBy" ,"name admin_image");
 
         if (!test) {
             return res.status(404).json({ error: 'Test not found' });
@@ -109,7 +109,9 @@ exports.getTest = async (req, res) => {
             subject: test.subject,
             class: test.class,
             description: test.description,
-            createdBy: test.createdBy
+            createdBy: test.createdBy.name,
+            admin_image:test.createdBy.admin_image,
+            sample_question: test.sample_question
         };
 
         res.status(200).json(sanitizedTest);

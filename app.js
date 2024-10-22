@@ -21,6 +21,9 @@ app.use('/practicetest', practicetestRouter);
 
 const notificationRoutes = require("./routers/Notification.router");
 app.use("/notifications", notificationRoutes);
+ 
+// const courseRoute = require("./routers/cource.router");
+// app.use("/course", courseRoute);
 
 
 

@@ -6,6 +6,7 @@ const adminSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }, // Add password field
   testsCreated: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Test' }],
+  admin_image:{ type: String, required: true}
 });
 
 // Middleware to hash password before saving

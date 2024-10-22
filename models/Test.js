@@ -20,6 +20,7 @@ const testSchema = new mongoose.Schema({
   test_image: { type: String },
   totalMarks: { type: Number },
   passingMarks: { type: Number },
+  sample_question:{type: String}
 }, {
   timestamps: true
 });

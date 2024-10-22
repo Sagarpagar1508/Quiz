@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 // Create a test
 exports.createTest = async (req, res) => {
   try {
-    const { title, subject, questions, startTime, duration, createdBy, class: testClass, description, topic, totalMarks, passingMarks } = req.body;
+    const { title, subject, questions, startTime, duration, createdBy, class: testClass, description, topic, totalMarks, passingMarks, sample_question } = req.body;
 
     // Save image path if uploaded
     const test_image = req.file ? req.file.path : undefined;
@@ -25,7 +25,8 @@ exports.createTest = async (req, res) => {
       topic,
       totalMarks,
       passingMarks,
-      test_image // Store the image path here
+      test_image, // Store the image path here,
+      sample_question
     });
 
     await test.save();
