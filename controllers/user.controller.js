@@ -4,7 +4,8 @@ const User = require('../models/user.model');
 const Test = require('../models/Test');
 const userModel = require('../models/user.model');
 const { default: mongoose } = require('mongoose');
-
+const PracticeTest = require('../models/practicetest');
+const notificationModel = require('../models/notification.model');
 
 
 
@@ -59,7 +60,7 @@ exports.getTopicsAndQuizzesBySubject = async (req, res) => {
                     _id: "$topic", // Group by topic
                     quizzes: {
                         $push: {
-                            title: "$title",         // Quiz title
+                            subject: "$subject",         // Quiz title
                             test_image: "$test_image" // Quiz image
                         }
                     },
@@ -122,7 +123,7 @@ exports.getTest = async (req, res) => {
 exports.getTestQuiz = async (req, res) => {
     try {
         const testId = req.params.id;
-        const test = await Test.findById(testId);
+        const test = await Test.findById(testId).select("-questions.correctAnswer");
 
         if (!test) {
             return res.status(404).json({ error: 'Test not found' });
@@ -140,17 +141,12 @@ exports.getTestQuiz = async (req, res) => {
 };
 
 
+// submit the test
 
-
-
-
-
-// Submit test answers
 exports.submitTest = async (req, res) => {
     try {
         const testId = req.params.id;
         const { answers, studentId } = req.body;
-
 
         // Validate test existence
         const test = await Test.findById(testId);
@@ -175,9 +171,7 @@ exports.submitTest = async (req, res) => {
             const userAnswer = answers[index];
             const correctAnswer = question.correctAnswer?.trim().toLowerCase();
 
-
-
-            if (userAnswer && userAnswer === correctAnswer) {
+            if (userAnswer && userAnswer.trim().toLowerCase() === correctAnswer) {
                 score += 1;
             }
         });
@@ -195,6 +189,16 @@ exports.submitTest = async (req, res) => {
             return res.status(404).json({ error: 'Student not found' });
         }
 
+        // Create notification
+        const notification = new notificationModel({
+            recipient: student._id,
+            message: `Hello ${student.name}, your test has been submitted successfully!`,
+            activityType: "TEST_SUBMIT",
+            relatedId: student._id,
+        });
+
+        await notification.save();
+
         // Send the final score and result
         res.status(200).json({
             message: 'Test submitted successfully',
@@ -208,6 +212,72 @@ exports.submitTest = async (req, res) => {
         res.status(500).json({ error: 'Failed to submit test answers' });
     }
 };
+
+
+
+// Get Practice Test by Subject Name
+exports.getPracticeTestsBySubject = async (req, res) => {
+    const { subject } = req.params;
+
+    try {
+        const tests = await PracticeTest.find({ subject }); // Query the database for practice tests with the given subject
+
+        if (tests.length === 0) {
+            return res.status(404).json({ message: 'No practice tests found for the given subject.' });
+        }
+
+        res.status(200).json(tests); // Send the found tests in the response
+    } catch (error) {
+        res.status(500).json({ message: 'An error occurred while fetching practice tests.', error });
+    }
+};
+
+
+// Calculate and Display Practice Test Score
+exports.calculatePracticeTestScore = async (req, res) => {
+    const { testId } = req.params; // Retrieve the test ID from the URL parameters
+    const { userAnswers } = req.body; // Get the user's answers from the request body
+
+    try {
+        // Find the practice test by ID
+        const practiceTest = await PracticeTest.findById(testId);
+
+        if (!practiceTest) {
+            return res.status(404).json({ message: 'Practice test not found.' });
+        }
+
+        let score = 0;
+        let totalMarks = 0;
+
+        // Loop through the questions and calculate the score
+        practiceTest.questions.forEach((question, index) => {
+            totalMarks += 1; // Assuming each question carries 1 mark
+            if (userAnswers[index] === question.correctAnswer) {
+                score += 1;
+            }
+        });
+
+        // Prepare the result data
+        const result = {
+            testTitle: practiceTest.title,
+            totalQuestions: practiceTest.questions.length,
+            score: score,
+            totalMarks: totalMarks,
+            percentage: (score / totalMarks) * 100,
+            passingMarks: practiceTest.passingMarks,
+            passed: score >= practiceTest.passingMarks,
+        };
+
+        // Send the result in the response
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'An error occurred while calculating the score.', error });
+    }
+};
+
+
+
+
 
 // JWT secret (store this in environment variables)
 const JWT_SECRET = process.env.JWT_SECRET || 'bhojsoft';
@@ -228,6 +298,8 @@ exports.registerUser = async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign({ userId: user._id }, JWT_SECRET);
+
+
 
         res.status(201).json({ token, user });
     } catch (err) {
@@ -254,6 +326,13 @@ exports.loginUser = async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign({ userId: user._id }, JWT_SECRET);
+        const notification = new notificationModel({
+            recipient: user._id,
+            message: `Welcome back ${user.name} , Login successful.`,
+            activityType: "LOGIN_SUCCESS",
+            relatedId: user._id,
+        });
+        await notification.save();
 
         res.status(200).json({ token, user });
     } catch (err) {
@@ -282,7 +361,6 @@ exports.getProfile = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
 
 // Controller to update user details
@@ -319,16 +397,31 @@ exports.updateUser = async (req, res) => {
             { $set: data }, // Update the merged data
             { new: true, runValidators: true } // Return the updated document and run validation
         );
+       
+        // Generate JWT token
+        const token = jwt.sign({ userId: updatedUser._id }, JWT_SECRET);
+        const notification = new notificationModel({
+            recipient: updatedUser._id,
+            message: `Hello ${updatedUser.name}, Your Profile updated successfully :).`,
+            activityType: "PROFILE_UPDATED",
+            relatedId: updatedUser._id,
+          });
+          await notification.save();
+
 
         res.status(200).json({
             message: 'User updated successfully',
-            updatedUser,
+            token, // Send the new token
+            user: updatedUser // Send updated user info
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error updating user', error });
     }
 };
+
+
+
 
 
 // Controller to retrieve user and populate testsTaken with test details
@@ -354,16 +447,56 @@ exports.getUserWithTests = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Log the result to see what's being returned
-        console.log('User with tests:', user);
 
         res.status(200).json({
             message: 'User retrieved successfully',
             user,
         });
-    } catch (error) {
+    } catch (error) {   
         console.error('Error retrieving user and tests:', error);
         res.status(500).json({ message: 'Error retrieving user', error });
+    }
+};
+
+
+
+
+// Controller to filter users by top test scores
+exports.getTopUsersByScore = async (req, res) => {
+    try {
+        // Find all users and sort by the highest test score in testsTaken
+        const users = await User.aggregate([
+            // Unwind the testsTaken array to work with individual test records
+            { $unwind: "$testsTaken" },
+            // Sort by the score in descending order
+            { $sort: { "testsTaken.score": -1 } },
+            // Group by user ID to get the top score per user
+            {
+                $group: {
+                    _id: "$_id",
+                    name: { $first: "$name" },
+                    email: { $first: "$email" },
+                    topScore: { $first: "$testsTaken.score" }, // Get the top score
+                    profile_image: { $first: "$profile_image" }
+                }
+            },
+            // Sort users by their top score in descending order
+            { $sort: { topScore: -1 } },
+        ]);
+
+        // Send the result back as a response
+        res.status(200).json({
+            success: true,
+            message: 'Users filtered by top test score',
+            data: users
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error. Unable to retrieve users.',
+            error: error.message
+        });
     }
 };
 

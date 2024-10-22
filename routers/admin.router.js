@@ -18,7 +18,10 @@ router.post('/test',upload.single("test_image"), adminController.createTest);
 router.put('/test/:id', adminController.updateTest);
 router.delete('/test/:id', adminController.deleteTest);
 router.get('/tests', adminController.getTestsByAdmin);
-router.post('/register', adminController.registerAdmin);
 router.get('/:testId',  adminController.getTestById);
+
+// admin login 
+
+router.post('/login', adminController.loginAdmin);
 
 module.exports = router;

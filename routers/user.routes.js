@@ -44,7 +44,17 @@ router.get('/test/:id', userController.getTest);
 
 // Get a specific test Quiz
 router.get('/test/question/:id', userController.getTestQuiz);
-
+      // score test
 router.post('/test/:id/submit', userController.submitTest);
+
+
+// Route to get practice tests by subject name
+router.get('/practicetests/subject/:subject', userController.getPracticeTestsBySubject);
+
+// Route to calculate and display the score of a practice test
+router.post('/practicetests/:testId/score', userController.calculatePracticeTestScore);
+
+
+router.get('/top-users', userController.getTopUsersByScore);
 
 module.exports = router;

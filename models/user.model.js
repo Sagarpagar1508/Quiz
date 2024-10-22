@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
     country: { String },
     college_name: { type: String },
     experience: { type: String },
+    class: { type: String},
     profile_image: String,
     testsTaken: [{
         testId: { type: mongoose.Schema.Types.ObjectId, ref: 'Test' },

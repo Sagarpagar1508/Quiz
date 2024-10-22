@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const Admin = require('../models/admin');
 
 // Middleware to authenticate the user
 const authenticate = (req, res, next) => {
@@ -33,13 +34,28 @@ const authenticate = (req, res, next) => {
     }
 };
 
-// Middleware to authorize superAdmin role
-const authorizeSuperAdmin = (req, res, next) => {
-    // Check if the user has the superAdmin role
-    if (req.user.role !== 'superAdmin') {
-        return res.status(403).json({ message: 'Access denied: You do not have superAdmin privileges' });
+const authenticateToken = async (req, res, next) => {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+        return res.status(401).json({ message: 'Access denied: No token provided' });
     }
-    next();
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); // Assuming you have a JWT secret in env
+        const admin = await Admin.findById(decoded.userId); // Assuming the token contains a `userId`
+
+        if (!admin) {
+            return res.status(401).json({ message: 'Access denied: Invalid token' });
+        }
+
+        req.user = { userId: admin._id }; // Attach the admin's ID to `req.user`
+        next(); // Move to the next middleware
+    } catch (err) {
+        res.status(401).json({ message: 'Invalid token', error: err.message });
+    }
 };
 
-module.exports = { authenticate, authorizeSuperAdmin };
+
+
+
+module.exports = { authenticate, authenticateToken };

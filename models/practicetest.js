@@ -7,8 +7,8 @@ const questionSchema = new mongoose.Schema({
   correctAnswer: { type: String, required: true },
 });
 
-// Define Test Schema
-const testSchema = new mongoose.Schema({
+// Define practice Test Schema
+const practicetestSchema = new mongoose.Schema({
   title: { type: String, required: true },
   subject: { type: String, required: true },
   topic: { type:String, required: true},
@@ -17,7 +17,6 @@ const testSchema = new mongoose.Schema({
   duration: { type: Number, required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true }, // Reference to Admin who created the test
   description: { type: String },
-  test_image: { type: String },
   totalMarks: { type: Number },
   passingMarks: { type: Number },
 }, {
@@ -25,5 +24,5 @@ const testSchema = new mongoose.Schema({
 });
 
 // Define Test Model
-const Test = mongoose.model('Test', testSchema);
-module.exports = Test;
+const PracticeTest = mongoose.model('PracticeTest', practicetestSchema);
+module.exports = PracticeTest;
